@@ -1,0 +1,29 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+if [[ -z $1 ]]
+then
+	echo "USAGE: glsl2spv program.glsl [program.spv]"
+	exit 1
+fi
+
+target=$2
+
+if [[ -z $target ]]
+then
+	target=`echo "$1" | sed -e 's/glsl$/spv/i'`
+fi
+
+tmp_dir=$(mktemp -d -t gls-XXXXXXXXXX)
+tmp=${tmp_dir}/$(basename "$1")
+
+grep -v '^#!' "$1" | node "$DIR"/gls_resolve_includes.js |
+cpp -nostdinc -x c -I"$DIR"/../lib/spirv-io -o "${tmp}.full" &&
+node "$DIR"/gls_preprocess.js "${tmp}.full" &&
+glslangValidator -V -o "${target}" "${tmp}.full.comp" | grep -v "^${tmp}.full.comp$"
+if [[ -f "${target}" ]]
+then
+	cat "${tmp}.full.defs.spv" >> "${target}" #&&
+	#rm -r "${tmp_dir}"
+fi

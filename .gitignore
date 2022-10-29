@@ -1,0 +1,7 @@
+*.swp
+test_file
+test_string
+grep
+gls
+*.comp
+*.full*
