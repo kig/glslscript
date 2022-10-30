@@ -48,7 +48,7 @@
         while (!done) {
             freeIO(
                 fillLock(ReadBuffers[ActiveGroupId].status, {
-                    io r = read(file, readOffset + ActiveGroupID*readSize, readSize, ReadBuffers[ActiveGroupId].buffer);
+                    io r = read(file, readOffset + ActiveGroupId*readSize, readSize, ReadBuffers[ActiveGroupId].buffer);
                     readOffset += ActiveGroupCount * readSize;
                     readResult = awaitIO(r);
                     ReadBuffers[ActiveGroupId].length = strLen(readResult);
@@ -82,7 +82,7 @@
         while (!done) {
             freeIO(
                 drainLock(WriteBuffers[ActiveGroupId].status, {
-                    writeSync(outFile, writeOffset + ActiveGroupID*writeSize, writeSize, string(0, WriteBuffers[ActiveGroupId].length) + WriteBuffers[ActiveGroupId].buffer.x);
+                    writeSync(outFile, writeOffset + ActiveGroupId*writeSize, writeSize, string(0, WriteBuffers[ActiveGroupId].length) + WriteBuffers[ActiveGroupId].buffer.x);
                     writeOffset += ActiveGroupCount * writeSize;
                     done = WriteBuffers[ActiveGroupId].done;
                 });
@@ -104,7 +104,23 @@ shared int32_t _ctx_;
 shared int32_t _start_group_;
 shared int32_t _end_group_;
 
-#define GlobalBarrierLock io_pad_15
+#define GlobalBarrierLock io_pad_11
+
+void globalBarrier() {
+    atomicAdd(GlobalBarrierLock, 1);
+    if (ThreadId == 0) {
+        while (GlobalBarrierLock < ThreadCount);
+        GlobalBarrierLock = 0;
+    }
+    while (GlobalBarrierLock != 0);
+}
+
+void deviceBarrier() {
+    controlBarrier(gl_ScopeDevice, gl_ScopeDevice, gl_StorageSemanticsBuffer | gl_StorageSemanticsShared, gl_SemanticsAcquireRelease);
+}
+
+/*
+
 #define ActiveGroupCount (_end_group_ - _start_group_)
 #define ActiveGroupId (ThreadGroupId - _start_group_)
 
@@ -122,29 +138,16 @@ shared int32_t _end_group_;
 #define CTX_MULTIGROUP_THREADS 3
 
 #define widefor(t, i, start, end) for ( \
-    t      i = t(_ctx_ == CTX_SINGLE_THREAD ? 0 : (_ctx_ == CTX_ALL_THREADS ? ThreadId    : ThreadLocalID   )) + (start), \
+    t      i = t(_ctx_ == CTX_SINGLE_THREAD ? 0 : (_ctx_ == CTX_ALL_THREADS ? ThreadId    : ThreadLocalId   )) + (start), \
     t _incr_ = t(_ctx_ == CTX_SINGLE_THREAD ? 1 : (_ctx_ == CTX_ALL_THREADS ? ThreadCount : ThreadLocalCount));           \
     i < (end); i += _incr_)
 
-#define allfor(t, i, start, end) for (t i = ThreadID + start; i < end; i += ThreadCount)
-#define groupfor(t, i, start, end) for (t i = ThreadLocalID + start; i < end; i += ThreadLocalCount)
+#define allfor(t, i, start, end) for (t i = ThreadId + start; i < end; i += ThreadCount)
+#define groupfor(t, i, start, end) for (t i = ThreadLocalId + start; i < end; i += ThreadLocalCount)
 
 void copyFromIOToHeap(ptr_t src, ptr_t dst, size_t len) {
     widefor(ptr_t, i,         0, len/16) i64v2heap[dst/16+i] = i64v2fromIO[src/16+i];
     widefor(ptr_t, i, len/16*16, len   ) heap[dst+i]         = fromIO[src+i];
-}
-
-void globalBarrier() {
-    atomicAdd(GlobalBarrierLock, 1);
-    if (ThreadId == 0) {
-        while (GlobalBarrierLock < ThreadCount);
-        GlobalBarrierLock = 0;
-    }
-    while (GlobalBarrierLock != 0);
-}
-
-void deviceBarrier() {
-    controlBarrier(gl_ScopeDevice, gl_ScopeDevice, gl_StorageSemanticsBuffer | gl_StorageSemanticsShared, gl_SemanticsAcquireRelease);
 }
 
 #define unique(f) { \
@@ -263,3 +266,4 @@ void deviceBarrier() {
 //        }
 //    }
 //}
+*/

@@ -1,7 +1,7 @@
 #!/usr/bin/env gls
 
 #include <file.glsl>
-#include <https://raw.githubusercontent.com/kig/spirv-wasm/master/spirv-io/lib/dlopen.glsl> @ dbc62e1bd6df8765f90b9f54e72bb644e20489ad17fefae51450cdf5321ca769
+#include <https://raw.githubusercontent.com/kig/spirv-wasm/12f2554994f5b733da65e6705099e2afd160649c/spirv-io/lib/dlopen.glsl> @ 4b43671ba494238b3855c2990c2cd844573a91d15464ed8b77d2a5b98d0eb2e1
 
 ThreadLocalCount = 1;
 ThreadGroupCount = 1;
