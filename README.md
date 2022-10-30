@@ -32,7 +32,8 @@ void main() {
 
 Output
 
-```
+```bash
+$ gls hello_crash.glsl
 Hello from crash!
 We are running on 16384 threads across 256 thread groups. Let me introduce the first four thread groups.
 Thread 0 from thread group 0[0] checking in.
@@ -108,7 +109,7 @@ The easiest way to try out crash is with Docker.
 git clone https://github.com/kig/crash
 cd crash
 docker build -t crash .
-docker run --gpus all --ipc host --rm -it crash crash examples/hello_1.glsl
+docker run --gpus all --ipc host --rm -it crash gls examples/hello_1.glsl
 ```
 
 
@@ -127,7 +128,7 @@ bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
 git clone https://github.com/kig/crash
 cd crash
 make install
-crash examples/hello_1.glsl
+gls examples/hello_1.glsl
 ```
 
 
