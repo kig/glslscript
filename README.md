@@ -1,4 +1,4 @@
-### Crash
+# Crash
 
 GLSL as a scripting language? Say no more!
 
@@ -31,6 +31,7 @@ void main() {
 ```
 
 Output
+
 ```
 Hello from crash!
 We are running on 16384 threads across 256 thread groups. Let me introduce the first four thread groups.
@@ -68,7 +69,7 @@ With crash, your compute shaders can tell your CPU to do arbitrary IO:
  * Allocate memory on the CPU side and do reads and writes to it
  * dlopen CPU libraries and call functions in them
 
-Extra language features
+### Extra language features
 
  * Asynchronous IO `alloc_t buf = malloc(1024); io r = read("myfile.txt", buf); awaitIO(r); awaitIO(write("mycopy.txt", buf));`
  * Strings `string s = "foobar"; string s2 = str(vec3(0.0, 1.0, 2.0)); string s3 = concat(s1, " = ", s2); awaitIO(println(s3));`
