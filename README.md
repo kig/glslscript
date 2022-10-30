@@ -73,7 +73,7 @@ With crash, your compute shaders can tell your CPU to do arbitrary IO:
 ### Extra language features
 
  * Asynchronous IO `alloc_t buf = malloc(1024); io r = read("myfile.txt", buf); awaitIO(r); awaitIO(write("mycopy.txt", buf));`
- * Strings `string s = "foobar"; string s2 = str(vec3(0.0, 1.0, 2.0)); string s3 = concat(s1, " = ", s2); awaitIO(println(s3));`
+ * Strings `string s = "foobar"; string s2 = str(vec3(0.0, 1.0, 2.0)); string s3 = concat(s1, " = ", s2); println(s3);`
  * Multi-line template strings with backticks `` `foo ${bar}` ``
  * Character literals `'x'` and int32 literals `'\x89PNG'`
  * Dynamically allocated arrays `i32array a = i32{1,2,3}; i32array b = i32{4,5}; i32array ab = i32concat(a,b);`
