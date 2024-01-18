@@ -83,7 +83,7 @@ With GLSLScript, your compute shaders can tell your CPU to do arbitrary IO:
  * A second heap for IO to make life complicated: `FREE(alloc_t buf = malloc(1024); FREE_IO(readSync("myfile.txt", buf)); println(buf));`
  * And a macro to free both heaps at the same time: `FREE_ALL(alloc_t buf = malloc(1024); readSync("myfile.txt", buf); println(buf));`
  * Set warp width and warp count from GLSL: `ThreadLocalCount = 64; ThreadGroupCount = 256;`
- * By default, crash programs run across 16384 threads. A naive hello world will fill your screen with hellos. Use ThreadId to limit it to a single thread `if (ThreadId == 0) println("Hello, World!");` 
+ * By default, GLSLScript programs run across 16384 threads. A naive hello world will fill your screen with hellos. Use ThreadId to limit it to a single thread `if (ThreadId == 0) println("Hello, World!");` 
  * Set heap size per thread, per thread group and total program heap `HeapSize = 4096; GroupHeapSize = HeapSize * ThreadLocalCount; TotalHeapSize = GroupHeapSize * ThreadGroupCount;`
  * An `#include <file.glsl>` system powered by the C preprocessor.
  * That also loads things over HTTPS with SHA256 integrity verification `#include <https://raw.githubusercontent.com/kig/spirv-wasm/12f2554994f5b733da65e6705099e2afd160649c/spirv-io/lib/dlopen.glsl> @ 4b43671ba494238b3855c2990c2cd844573a91d15464ed8b77d2a5b98d0eb2e1`
