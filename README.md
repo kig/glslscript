@@ -1,8 +1,8 @@
-# Crash
+# GLSLScript
 
 GLSL as a scripting language? Say no more!
 
-Crash is a super not production-ready asynchronous IO runtime and module system for Vulkan compute shaders.
+GLSLScript is an asynchronous IO runtime and module system for Vulkan compute shaders.
 
 ## What does it look like?
 
@@ -12,7 +12,7 @@ Crash is a super not production-ready asynchronous IO runtime and module system 
 
 void main() {
     if (ThreadId == 0) {
-        println("Hello from crash!");
+        println("Hello from GLSLScript!");
         println(`We are running on ${ThreadLocalCount * ThreadGroupCount} threads across ${ThreadGroupCount} thread groups. Let me introduce the first four thread groups.`);
     }
     globalBarrier();
@@ -33,8 +33,8 @@ void main() {
 Output
 
 ```bash
-$ gls hello_crash.glsl
-Hello from crash!
+$ gls hello_gls.glsl
+Hello from GLSLScript!
 We are running on 16384 threads across 256 thread groups. Let me introduce the first four thread groups.
 Thread 0 from thread group 0[0] checking in.
 Thread 16 from thread group 0[16] checking in.
@@ -60,7 +60,7 @@ Hello John!
 
 ## Features
 
-With crash, your compute shaders can tell your CPU to do arbitrary IO:
+With GLSLScript, your compute shaders can tell your CPU to do arbitrary IO:
 
  * Print strings
  * Read from files and write to files
@@ -103,13 +103,13 @@ The example scripts in [examples/](examples/) show you how to do various things,
 
 ## Try it out
 
-The easiest way to try out crash is with Docker.
+The easiest way to try out GLSLScript is with Docker.
 
 ```bash
-git clone https://github.com/kig/crash
-cd crash
-docker build -t crash .
-docker run --gpus all --ipc host --rm -it crash gls examples/hello_1.glsl
+git clone https://github.com/kig/glslscript
+cd glslscript
+docker build -t glslscript .
+docker run --gpus all --ipc host --rm -it glslscript gls examples/hello_1.glsl
 ```
 
 
@@ -124,9 +124,9 @@ apt-get install libnvidia-gl-520 libvulkan-dev cpp glslang-tools liblz4-dev libz
 curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt-get install -y nodejs
 # Install LLVM
 bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
-# Install Crash
-git clone https://github.com/kig/crash
-cd crash
+# Install GLSLScript
+git clone https://github.com/kig/glslscript
+cd glslscript
 make install
 gls examples/hello_1.glsl
 ```
@@ -144,15 +144,10 @@ There's a simple SPIR-V parser in [parse_spv.hpp](src/parse_spv.hpp) to set runt
 
 Finally, [compute_application.hpp](src/compute_application.hpp) has all the Vulkan boilerplate for allocating IO buffers and running the thing.
 
+## Implementation notes
 
-## Why the name "Crash"
-
-Have _you_ tried developing an IO runtime for Vulkan compute shaders? [1]
-
-It's crashingly fast! From zero to done in a crash. Imagine being bottlenecked by ridiculously high-bandwidth things as you crash through your problems.
-
-[1] There's no mid-shader CPU-GPU synchronization out-of-the-box. Shaders are designed to run for just a few milliseconds at a time.
-To get around this, you can spin on a shared buffer.
+There's no mid-shader CPU-GPU synchronization out-of-the-box. Shaders are designed to run for just a few milliseconds at a time.
+To get around this, you can spinlock on a shared buffer.
 
 The GPU does a request by writing the params to the request buffer, and increments the request count. The CPU keeps checking the request count for changes.
 When it sees a change, it reads the request params and runs the request. After running the request, the CPU writes the results to the response buffer.
@@ -161,7 +156,7 @@ The GPU spins and waits for the request status flag to be set to completed. Afte
 buffer, sets the request status flag to handled, and goes on its merry way.
 
 So far, so good. What if you couldn't trust the order of the writes and reads above? What if cache lines in your memory buffer were getting transported over UDP.
-What if the driver killed your compute shaders after 10 seconds. Since clearly it has hung, right? Who would wait for user input in a shader? Crash, that's who!
+What if the driver killed your compute shaders after 10 seconds. Since clearly it has hung, right? Who would wait for user input in a shader? GLSLScript, that's who!
 
 
 ## License
