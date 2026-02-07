@@ -132,6 +132,25 @@ gls examples/hello_1.glsl
 ```
 
 
+## CPU Testing (No GPU Required)
+
+GLSLScript can run on CPU-only environments without Vulkan or GPU support. This is useful for testing on diverse hardware like Raspberry Pi, cloud CI/CD, or any system without GPU drivers.
+
+**Quick start for CPU testing:**
+
+```bash
+# Build CPU-only version (no Vulkan required)
+make cpu-only
+
+# Requires SPIRV-Cross - see CPU_TESTING.md for setup
+
+# Run tests on CPU
+./test/run_cpu_tests.sh
+```
+
+See [CPU_TESTING.md](CPU_TESTING.md) for detailed setup instructions and compatibility information.
+
+
 ## Develop
 
 The [lib/](lib/) dir has the core language libraries for strings, arrays, hashtables, files, malloc, lz4 decompression, and other things you may need.

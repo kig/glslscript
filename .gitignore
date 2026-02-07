@@ -5,3 +5,9 @@ grep
 gls
 *.comp
 *.full*
+*.spv
+*.spv.cpp
+*.spv.so
+bin/gls
+bin/gls_cpu
+.gls/
