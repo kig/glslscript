@@ -1,0 +1,47 @@
+FROM ubuntu:22.04
+
+# Avoid interactive prompts during build
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    cpp \
+    glslang-tools \
+    liblz4-dev \
+    libzstd-dev \
+    curl \
+    make \
+    clang \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js (needed for preprocessor)
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install SPIRV-Cross
+RUN git clone --depth 1 https://github.com/KhronosGroup/SPIRV-Cross.git /tmp/SPIRV-Cross \
+    && cd /tmp/SPIRV-Cross \
+    && mkdir build && cd build \
+    && cmake .. -DCMAKE_BUILD_TYPE=Release \
+    && make -j$(nproc) \
+    && make install \
+    && ldconfig \
+    && rm -rf /tmp/SPIRV-Cross
+
+WORKDIR /app
+
+# Copy source code
+COPY . /app
+
+# Build CPU version
+RUN make cpu-only
+
+# Add bin to PATH
+ENV PATH="/app/bin:${PATH}"
+
+# Default command runs a simple example on CPU
+CMD ["gls_cpu", "/app/examples/hello_1.glsl"]
