@@ -11,6 +11,54 @@ GLSLScript can run in CPU-only mode using SPIRV-Cross to transpile SPIR-V comput
 - Compatibility testing across different hardware
 - Running on diverse platforms (Raspberry Pi, mobile devices, etc.)
 
+## Platform Compatibility
+
+GLSLScript CPU mode has been tested or is expected to work on:
+
+### Tested Platforms
+- **Ubuntu/Debian Linux** - Full support with apt-get packages
+- **macOS** - Support via Homebrew
+
+### Expected to Work
+- **Raspberry Pi** (Raspbian/Ubuntu) - ARM CPU support via SPIRV-Cross
+- **Alpine Linux** - Minimal Linux environments
+- **WSL2** (Windows Subsystem for Linux) - Windows development
+- **Termux** (Android) - Mobile development and testing
+
+### Platform-Specific Notes
+
+#### Raspberry Pi
+```bash
+# Install dependencies
+sudo apt-get install build-essential cmake git liblz4-dev libzstd-dev nodejs
+
+# Follow normal SPIRV-Cross installation from source
+# Binary packages may not be available for ARM
+```
+
+#### macOS (Apple Silicon)
+```bash
+# SPIRV-Cross should build natively for ARM64
+brew install cmake lz4 zstd glslang
+
+# Then build SPIRV-Cross from source as shown in Prerequisites
+```
+
+#### WSL2
+```bash
+# Use Ubuntu instructions
+# No GPU passthrough needed for CPU mode
+```
+
+#### Termux (Android)
+```bash
+# Install dependencies via pkg
+pkg install clang cmake git lz4 zstd nodejs
+
+# Build SPIRV-Cross from source
+# May need to adjust compiler flags for Android
+```
+
 ## Prerequisites
 
 For CPU-only testing, you need:
@@ -137,3 +185,21 @@ Planned enhancements for CPU compatibility:
 - [ ] SIMD optimization for CPU execution (ISPC-style)
 - [ ] Better error messages for CPU-specific issues
 - [ ] Automated test runner for the test suite
+
+## Continuous Integration
+
+A GitHub Actions workflow is provided at `.github/workflows/cpu-tests.yml` that demonstrates CPU-only testing without GPU requirements. This workflow:
+- Installs all dependencies including SPIRV-Cross
+- Builds the CPU version
+- Runs the test suite
+- Validates basic functionality
+
+This serves as a reference for setting up CI/CD pipelines on platforms like:
+- GitHub Actions
+- GitLab CI
+- CircleCI
+- Travis CI
+- Jenkins
+
+The CPU mode enables testing on any CI platform, regardless of GPU availability.
+

@@ -191,6 +191,11 @@ class ComputeApplication
         if (!fileExists(shaderDLL)) {
             if (!compileSPVToDLL(programFileName, shaderDLL)) {
                 fprintf(stderr, "Failed to compile shader to dynamic library\n");
+                fprintf(stderr, "\nTroubleshooting:\n");
+                fprintf(stderr, "  1. Ensure SPIRV-Cross is installed: which spirv-cross\n");
+                fprintf(stderr, "  2. Ensure clang++ is available: which clang++\n");
+                fprintf(stderr, "  3. Check that the SPIR-V file is valid\n");
+                fprintf(stderr, "  4. See CPU_TESTING.md for setup instructions\n");
                 exit(1);
             }
         }
@@ -201,10 +206,23 @@ class ComputeApplication
         // This can be loaded from a dynamic library
 
         void *lib = dlopen(shaderDLL, RTLD_LAZY);
+        if (!lib) {
+            fprintf(stderr, "Failed to load shader library: %s\n", dlerror());
+            fprintf(stderr, "Library path: %s\n", shaderDLL);
+            exit(1);
+        }
         const struct spirv_cross_interface * (*spirv_cross_get_interface)(void);
         spirv_cross_get_interface = (const struct spirv_cross_interface * (*)(void)) dlsym(lib, "spirv_cross_get_interface");
+        if (!spirv_cross_get_interface) {
+            fprintf(stderr, "Failed to find spirv_cross_get_interface symbol: %s\n", dlerror());
+            exit(1);
+        }
 
         iface = (*spirv_cross_get_interface)();
+        if (!iface) {
+            fprintf(stderr, "Failed to get SPIRV-Cross interface\n");
+            exit(1);
+        }
 
         timeIval("Load shader DLL");
 
@@ -392,11 +410,35 @@ class ComputeApplication
         std::string spvFn = std::string(spvFilename);
         std::string dllFn = std::string(dllFilename);
         std::string cppFilename = spvFn + ".cpp";
-        system(("spirv-cross --output " + cppFilename + " " + spvFilename + " --cpp --stage comp --vulkan-semantics").c_str());
-        if (!std::filesystem::exists(cppFilename)) {
+        
+        // Check if spirv-cross is available
+        if (system("which spirv-cross > /dev/null 2>&1") != 0) {
+            fprintf(stderr, "Error: spirv-cross not found in PATH\n");
+            fprintf(stderr, "Please install SPIRV-Cross to run shaders on CPU.\n");
+            fprintf(stderr, "See CPU_TESTING.md or run: ./scripts/setup_cpu_env.sh\n");
             return false;
         }
-        system(("clang++ -O2 --shared -fPIC -o " + dllFn + " " + cppFilename).c_str());
+        
+        std::string cmd = "spirv-cross --output " + cppFilename + " " + spvFilename + " --cpp --stage comp --vulkan-semantics 2>&1";
+        if (verbose) fprintf(stderr, "Running: %s\n", cmd.c_str());
+        int ret = system(cmd.c_str());
+        if (ret != 0) {
+            fprintf(stderr, "SPIRV-Cross transpilation failed with exit code %d\n", ret);
+            return false;
+        }
+        if (!std::filesystem::exists(cppFilename)) {
+            fprintf(stderr, "SPIRV-Cross did not generate C++ file: %s\n", cppFilename.c_str());
+            return false;
+        }
+        
+        cmd = "clang++ -O2 --shared -fPIC -o " + dllFn + " " + cppFilename + " 2>&1";
+        if (verbose) fprintf(stderr, "Running: %s\n", cmd.c_str());
+        ret = system(cmd.c_str());
+        if (ret != 0) {
+            fprintf(stderr, "C++ compilation failed with exit code %d\n", ret);
+            fprintf(stderr, "Source file: %s\n", cppFilename.c_str());
+            return false;
+        }
         return fileExists(dllFilename);
     }
 
