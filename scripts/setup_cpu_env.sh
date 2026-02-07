@@ -69,7 +69,7 @@ cd SPIRV-Cross
 echo "Building SPIRV-Cross..."
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
+make -j$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
 
 echo "Installing SPIRV-Cross..."
 if [ "$EUID" -eq 0 ]; then

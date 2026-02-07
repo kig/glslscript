@@ -39,6 +39,7 @@
 #include <filesystem>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <zstd.h>
 #include <lz4.h>
@@ -419,26 +420,73 @@ class ComputeApplication
             return false;
         }
         
-        std::string cmd = "spirv-cross --output " + cppFilename + " " + spvFilename + " --cpp --stage comp --vulkan-semantics 2>&1";
-        if (verbose) fprintf(stderr, "Running: %s\n", cmd.c_str());
-        int ret = system(cmd.c_str());
-        if (ret != 0) {
-            fprintf(stderr, "SPIRV-Cross transpilation failed with exit code %d\n", ret);
+        // Use execvp-style execution to avoid shell injection
+        // First transpile SPIR-V to C++ using spirv-cross
+        pid_t pid = fork();
+        if (pid == 0) {
+            // Child process - execute spirv-cross
+            const char *args[] = {
+                "spirv-cross",
+                "--output", cppFilename.c_str(),
+                spvFilename,
+                "--cpp",
+                "--stage", "comp",
+                "--vulkan-semantics",
+                NULL
+            };
+            execvp("spirv-cross", (char* const*)args);
+            // If execvp returns, it failed
+            fprintf(stderr, "Failed to execute spirv-cross\n");
+            exit(1);
+        } else if (pid > 0) {
+            // Parent process - wait for child
+            int status;
+            waitpid(pid, &status, 0);
+            if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+                fprintf(stderr, "SPIRV-Cross transpilation failed\n");
+                return false;
+            }
+        } else {
+            fprintf(stderr, "Failed to fork process for spirv-cross\n");
             return false;
         }
+        
         if (!std::filesystem::exists(cppFilename)) {
             fprintf(stderr, "SPIRV-Cross did not generate C++ file: %s\n", cppFilename.c_str());
             return false;
         }
         
-        cmd = "clang++ -O2 --shared -fPIC -o " + dllFn + " " + cppFilename + " 2>&1";
-        if (verbose) fprintf(stderr, "Running: %s\n", cmd.c_str());
-        ret = system(cmd.c_str());
-        if (ret != 0) {
-            fprintf(stderr, "C++ compilation failed with exit code %d\n", ret);
-            fprintf(stderr, "Source file: %s\n", cppFilename.c_str());
+        // Compile C++ to shared library using clang++
+        pid = fork();
+        if (pid == 0) {
+            // Child process - execute clang++
+            const char *args[] = {
+                "clang++",
+                "-O2",
+                "--shared",
+                "-fPIC",
+                "-o", dllFilename,
+                cppFilename.c_str(),
+                NULL
+            };
+            execvp("clang++", (char* const*)args);
+            // If execvp returns, it failed
+            fprintf(stderr, "Failed to execute clang++\n");
+            exit(1);
+        } else if (pid > 0) {
+            // Parent process - wait for child
+            int status;
+            waitpid(pid, &status, 0);
+            if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+                fprintf(stderr, "C++ compilation failed\n");
+                fprintf(stderr, "Source file: %s\n", cppFilename.c_str());
+                return false;
+            }
+        } else {
+            fprintf(stderr, "Failed to fork process for clang++\n");
             return false;
         }
+        
         return fileExists(dllFilename);
     }
 
