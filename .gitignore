@@ -5,3 +5,10 @@ grep
 gls
 *.comp
 *.full*
+*.spv
+*.spv.cpp
+*.spv.so
+bin/gls
+bin/gls_cpu
+.gls/
+_codeql_detected_source_root

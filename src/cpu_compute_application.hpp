@@ -39,6 +39,7 @@
 #include <filesystem>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <zstd.h>
 #include <lz4.h>
@@ -191,6 +192,11 @@ class ComputeApplication
         if (!fileExists(shaderDLL)) {
             if (!compileSPVToDLL(programFileName, shaderDLL)) {
                 fprintf(stderr, "Failed to compile shader to dynamic library\n");
+                fprintf(stderr, "\nTroubleshooting:\n");
+                fprintf(stderr, "  1. Ensure SPIRV-Cross is installed: which spirv-cross\n");
+                fprintf(stderr, "  2. Ensure clang++ is available: which clang++\n");
+                fprintf(stderr, "  3. Check that the SPIR-V file is valid\n");
+                fprintf(stderr, "  4. See CPU_TESTING.md for setup instructions\n");
                 exit(1);
             }
         }
@@ -201,10 +207,23 @@ class ComputeApplication
         // This can be loaded from a dynamic library
 
         void *lib = dlopen(shaderDLL, RTLD_LAZY);
+        if (!lib) {
+            fprintf(stderr, "Failed to load shader library: %s\n", dlerror());
+            fprintf(stderr, "Library path: %s\n", shaderDLL);
+            exit(1);
+        }
         const struct spirv_cross_interface * (*spirv_cross_get_interface)(void);
         spirv_cross_get_interface = (const struct spirv_cross_interface * (*)(void)) dlsym(lib, "spirv_cross_get_interface");
+        if (!spirv_cross_get_interface) {
+            fprintf(stderr, "Failed to find spirv_cross_get_interface symbol: %s\n", dlerror());
+            exit(1);
+        }
 
         iface = (*spirv_cross_get_interface)();
+        if (!iface) {
+            fprintf(stderr, "Failed to get SPIRV-Cross interface\n");
+            exit(1);
+        }
 
         timeIval("Load shader DLL");
 
@@ -392,11 +411,100 @@ class ComputeApplication
         std::string spvFn = std::string(spvFilename);
         std::string dllFn = std::string(dllFilename);
         std::string cppFilename = spvFn + ".cpp";
-        system(("spirv-cross --output " + cppFilename + " " + spvFilename + " --cpp --stage comp --vulkan-semantics").c_str());
-        if (!std::filesystem::exists(cppFilename)) {
+        
+        // Check if spirv-cross is available by attempting to execute it
+        // This is safer than using system() with shell expansion
+        pid_t check_pid = fork();
+        if (check_pid == 0) {
+            // Child process - try to execute spirv-cross --version
+            int devnull = open("/dev/null", O_WRONLY);
+            dup2(devnull, STDOUT_FILENO);
+            dup2(devnull, STDERR_FILENO);
+            close(devnull);
+            const char *args[] = {"spirv-cross", "--version", NULL};
+            execvp("spirv-cross", (char* const*)args);
+            exit(1); // execvp failed
+        } else if (check_pid > 0) {
+            int status;
+            waitpid(check_pid, &status, 0);
+            if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+                fprintf(stderr, "Error: spirv-cross not found in PATH\n");
+                fprintf(stderr, "Please install SPIRV-Cross to run shaders on CPU.\n");
+                fprintf(stderr, "See CPU_TESTING.md or run: ./scripts/setup_cpu_env.sh\n");
+                return false;
+            }
+        } else {
+            fprintf(stderr, "Failed to check for spirv-cross\n");
             return false;
         }
-        system(("clang++ -O2 --shared -fPIC -o " + dllFn + " " + cppFilename).c_str());
+        
+        // Use execvp-style execution to avoid shell injection
+        // First transpile SPIR-V to C++ using spirv-cross
+        pid_t pid = fork();
+        if (pid == 0) {
+            // Child process - execute spirv-cross
+            const char *args[] = {
+                "spirv-cross",
+                "--output", cppFilename.c_str(),
+                spvFilename,
+                "--cpp",
+                "--stage", "comp",
+                "--vulkan-semantics",
+                NULL
+            };
+            execvp("spirv-cross", (char* const*)args);
+            // If execvp returns, it failed
+            fprintf(stderr, "Failed to execute spirv-cross\n");
+            exit(1);
+        } else if (pid > 0) {
+            // Parent process - wait for child
+            int status;
+            waitpid(pid, &status, 0);
+            if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+                fprintf(stderr, "SPIRV-Cross transpilation failed\n");
+                return false;
+            }
+        } else {
+            fprintf(stderr, "Failed to fork process for spirv-cross\n");
+            return false;
+        }
+        
+        if (!std::filesystem::exists(cppFilename)) {
+            fprintf(stderr, "SPIRV-Cross did not generate C++ file: %s\n", cppFilename.c_str());
+            return false;
+        }
+        
+        // Compile C++ to shared library using clang++
+        pid = fork();
+        if (pid == 0) {
+            // Child process - execute clang++
+            const char *args[] = {
+                "clang++",
+                "-O2",
+                "--shared",
+                "-fPIC",
+                "-o", dllFilename,
+                cppFilename.c_str(),
+                NULL
+            };
+            execvp("clang++", (char* const*)args);
+            // If execvp returns, it failed
+            fprintf(stderr, "Failed to execute clang++\n");
+            exit(1);
+        } else if (pid > 0) {
+            // Parent process - wait for child
+            int status;
+            waitpid(pid, &status, 0);
+            if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+                fprintf(stderr, "C++ compilation failed\n");
+                fprintf(stderr, "Source file: %s\n", cppFilename.c_str());
+                return false;
+            }
+        } else {
+            fprintf(stderr, "Failed to fork process for clang++\n");
+            return false;
+        }
+        
         return fileExists(dllFilename);
     }
 

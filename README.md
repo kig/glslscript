@@ -105,12 +105,30 @@ The example scripts in [examples/](examples/) show you how to do various things,
 
 The easiest way to try out GLSLScript is with Docker.
 
+### GPU Version (requires NVIDIA GPU and docker-gpu support)
+
 ```bash
 git clone https://github.com/kig/glslscript
 cd glslscript
 docker build -t glslscript .
 docker run --gpus all --ipc host --rm -it glslscript gls examples/hello_1.glsl
 ```
+
+### CPU Version (no GPU required, works anywhere)
+
+```bash
+git clone https://github.com/kig/glslscript
+cd glslscript
+docker build -f Dockerfile.cpu -t glslscript-cpu .
+docker run --rm -it glslscript-cpu gls_cpu examples/hello_1.glsl
+```
+
+The CPU version works on any platform including:
+- Cloud CI/CD environments
+- Raspberry Pi
+- macOS (including Apple Silicon)
+- Windows via WSL2
+- Any Linux system without GPU
 
 
 ## Install
@@ -130,6 +148,25 @@ cd glslscript
 make install
 gls examples/hello_1.glsl
 ```
+
+
+## CPU Testing (No GPU Required)
+
+GLSLScript can run on CPU-only environments without Vulkan or GPU support. This is useful for testing on diverse hardware like Raspberry Pi, cloud CI/CD, or any system without GPU drivers.
+
+**Quick start for CPU testing:**
+
+```bash
+# Build CPU-only version (no Vulkan required)
+make cpu-only
+
+# Requires SPIRV-Cross - see CPU_TESTING.md for setup
+
+# Run tests on CPU
+./test/run_cpu_tests.sh
+```
+
+See [CPU_TESTING.md](CPU_TESTING.md) for detailed setup instructions and compatibility information.
 
 
 ## Develop
