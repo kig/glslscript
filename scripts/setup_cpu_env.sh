@@ -66,10 +66,23 @@ echo "Cloning SPIRV-Cross repository..."
 git clone --depth 1 https://github.com/KhronosGroup/SPIRV-Cross.git
 cd SPIRV-Cross
 
+# Helper function to detect CPU count
+get_cpu_count() {
+    if command -v nproc >/dev/null 2>&1; then
+        nproc
+    elif command -v getconf >/dev/null 2>&1; then
+        getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2
+    elif command -v sysctl >/dev/null 2>&1; then
+        sysctl -n hw.logicalcpu 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2
+    else
+        echo 2
+    fi
+}
+
 echo "Building SPIRV-Cross..."
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
+make -j$(get_cpu_count)
 
 echo "Installing SPIRV-Cross..."
 if [ "$EUID" -eq 0 ]; then

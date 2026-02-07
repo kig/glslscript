@@ -412,11 +412,29 @@ class ComputeApplication
         std::string dllFn = std::string(dllFilename);
         std::string cppFilename = spvFn + ".cpp";
         
-        // Check if spirv-cross is available
-        if (system("which spirv-cross > /dev/null 2>&1") != 0) {
-            fprintf(stderr, "Error: spirv-cross not found in PATH\n");
-            fprintf(stderr, "Please install SPIRV-Cross to run shaders on CPU.\n");
-            fprintf(stderr, "See CPU_TESTING.md or run: ./scripts/setup_cpu_env.sh\n");
+        // Check if spirv-cross is available by attempting to execute it
+        // This is safer than using system() with shell expansion
+        pid_t check_pid = fork();
+        if (check_pid == 0) {
+            // Child process - try to execute spirv-cross --version
+            int devnull = open("/dev/null", O_WRONLY);
+            dup2(devnull, STDOUT_FILENO);
+            dup2(devnull, STDERR_FILENO);
+            close(devnull);
+            const char *args[] = {"spirv-cross", "--version", NULL};
+            execvp("spirv-cross", (char* const*)args);
+            exit(1); // execvp failed
+        } else if (check_pid > 0) {
+            int status;
+            waitpid(check_pid, &status, 0);
+            if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+                fprintf(stderr, "Error: spirv-cross not found in PATH\n");
+                fprintf(stderr, "Please install SPIRV-Cross to run shaders on CPU.\n");
+                fprintf(stderr, "See CPU_TESTING.md or run: ./scripts/setup_cpu_env.sh\n");
+                return false;
+            }
+        } else {
+            fprintf(stderr, "Failed to check for spirv-cross\n");
             return false;
         }
         

@@ -4,6 +4,12 @@
 
 set -e
 
+# Cleanup temporary files on exit
+cleanup() {
+    rm -f /tmp/test_output_$$.txt
+}
+trap cleanup EXIT INT TERM
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
@@ -72,8 +78,6 @@ for test_file in $TEST_FILES; do
             fi
         fi
     fi
-    
-    rm -f /tmp/test_output_$$.txt
 done
 
 echo ""
